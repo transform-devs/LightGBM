@@ -30,6 +30,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <fstream>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #if (!((defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))))
 #define FMT_HEADER_ONLY
@@ -198,6 +201,43 @@ inline static std::vector<std::string> Split(const char* c_str, const char* deli
     ret.push_back(str.substr(i));
   }
   return ret;
+}
+
+inline static std::string LoadStringFromFile(const char* filename, int row_num = INT_MAX) {
+  if (filename == NULL || *filename == '\0') {
+    return "";
+  }
+  std::stringstream ss;
+  Common::C_stringstream(ss);
+  std::ifstream fin(filename);
+  std::string line = "";
+  int i = 0;
+  while (std::getline(fin, line) && i++ < row_num) {
+    ss << line << "\n";
+  }
+  return ss.str();
+}
+
+inline static std::string GetFromParserConfig(std::string config_str, std::string key) {
+  // parser config should follow json format.
+  std::string value = "";
+  std::stringstream config_ss(config_str);
+  boost::property_tree::ptree ptree;
+  boost::property_tree::read_json(config_ss, ptree);
+  auto node = ptree.get_child_optional(key);
+  if (node) {
+    value = node->get_value<std::string>();
+  }
+  return value;
+}
+
+inline static std::string SaveToParserConfig(std::string config_str, std::string key, std::string value) {
+  std::stringstream config_ss(config_str), out_ss;
+  boost::property_tree::ptree ptree;
+  boost::property_tree::read_json(config_ss, ptree);
+  ptree.put(key, value);
+  boost::property_tree::write_json(out_ss, ptree);
+  return out_ss.str();
 }
 
 template<typename T>
