@@ -8,6 +8,7 @@
 #if ((defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__)))
 #include <LightGBM/utils/common_legacy_solaris.h>
 #endif
+#include <LightGBM/utils/json11.h>
 #include <LightGBM/utils/log.h>
 #include <LightGBM/utils/openmp_wrapper.h>
 
@@ -31,8 +32,6 @@
 #include <utility>
 #include <vector>
 #include <fstream>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 #if (!((defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))))
 #define FMT_HEADER_ONLY
@@ -64,6 +63,8 @@
 namespace LightGBM {
 
 namespace Common {
+
+using json11::Json;
 
 /*!
 * Imbues the stream with the C locale.
@@ -220,24 +221,24 @@ inline static std::string LoadStringFromFile(const char* filename, int row_num =
 
 inline static std::string GetFromParserConfig(std::string config_str, std::string key) {
   // parser config should follow json format.
-  std::string value = "";
-  std::stringstream config_ss(config_str);
-  boost::property_tree::ptree ptree;
-  boost::property_tree::read_json(config_ss, ptree);
-  auto node = ptree.get_child_optional(key);
-  if (node) {
-    value = node->get_value<std::string>();
+  std::string err;
+  Json config_json = Json::parse(config_str, &err);
+  if (!err.empty()) {
+    Log::Fatal("Invalid parser config: %s. Please check if follow json format.", err.c_str());
   }
-  return value;
+  return config_json[key].string_value();
 }
 
 inline static std::string SaveToParserConfig(std::string config_str, std::string key, std::string value) {
-  std::stringstream config_ss(config_str), out_ss;
-  boost::property_tree::ptree ptree;
-  boost::property_tree::read_json(config_ss, ptree);
-  ptree.put(key, value);
-  boost::property_tree::write_json(out_ss, ptree);
-  return out_ss.str();
+  std::string err;
+  Json config_json = Json::parse(config_str, &err);
+  if (!err.empty()) {
+    Log::Fatal("Invalid parser config: %s. Please check if follow json format.", err.c_str());
+  }
+  CHECK(config_json.is_object());
+  std::map<std::string, Json> config_map = config_json.object_items();
+  config_map.insert(std::pair<std::string, Json>(key, Json(value)));
+  return Json(config_map).dump();
 }
 
 template<typename T>
