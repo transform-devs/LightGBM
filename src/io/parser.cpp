@@ -250,8 +250,10 @@ Parser* ParserFactory::getObject(std::string class_name, std::string config_str)
       _object_map.find(class_name);
   if (iter != _object_map.end()) {
     return iter->second(config_str);
+  } else {
+    Log::Fatal("Cannot find parser class '%s', please register first or check config format.", class_name.c_str());
+    return nullptr;
   }
-  Log::Fatal("Cannot find parser class '%s', please register first or check config format.", class_name.c_str());
 }
 
 Parser* Parser::CreateParser(const char* filename, bool header, int num_features, int label_idx, bool precise_float_parser) {
