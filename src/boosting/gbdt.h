@@ -487,8 +487,6 @@ class GBDT : public GBDTBase {
   int max_feature_idx_;
   /*! \brief Parser config file content */
   std::string parser_config_str_ = "";
-  /*! \brief Model path */
-  std::string model_path_;
 
 #ifdef USE_CUDA
   /*! \brief First order derivative of training data */
