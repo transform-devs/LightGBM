@@ -1,7 +1,9 @@
 # coding: utf-8
 import logging
+from pathlib import Path
 
 import numpy as np
+import pytest
 
 import lightgbm as lgb
 
@@ -97,3 +99,15 @@ WARNING | More than one metric available, picking one to plot.
                 actual_log_wo_gpu_stuff.append(line)
 
     assert "\n".join(actual_log_wo_gpu_stuff) == expected_log
+
+
+def test_smoke_custom_parser(tmp_path):
+    data_path = Path(__file__).absolute().parents[2] / 'examples/binary_classification/binary.train'
+    parser_config_file = tmp_path / 'parser.ini'
+    with open(parser_config_file, 'w') as fout:
+        fout.write("{\"className\": \"dummy\", \"id\":\"1\"}")
+
+    data = lgb.Dataset(data_path, params={"parser_config_file": parser_config_file})
+    with pytest.raises(lgb.basic.LightGBMError,
+                       match="Cannot find parser class 'dummy', please register first or check config format"):
+        lgb.train({}, data)

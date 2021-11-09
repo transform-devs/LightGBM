@@ -8,6 +8,7 @@
 #if ((defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__)))
 #include <LightGBM/utils/common_legacy_solaris.h>
 #endif
+#include <LightGBM/utils/json11.h>
 #include <LightGBM/utils/log.h>
 #include <LightGBM/utils/openmp_wrapper.h>
 
@@ -30,6 +31,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <fstream>
 
 #if (!((defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))))
 #define FMT_HEADER_ONLY
@@ -61,6 +63,8 @@
 namespace LightGBM {
 
 namespace Common {
+
+using json11::Json;
 
 /*!
 * Imbues the stream with the C locale.
@@ -198,6 +202,43 @@ inline static std::vector<std::string> Split(const char* c_str, const char* deli
     ret.push_back(str.substr(i));
   }
   return ret;
+}
+
+inline static std::string LoadStringFromFile(const char* filename, int row_num = INT_MAX) {
+  if (filename == NULL || *filename == '\0') {
+    return "";
+  }
+  std::stringstream ss;
+  Common::C_stringstream(ss);
+  std::ifstream fin(filename);
+  std::string line = "";
+  int i = 0;
+  while (std::getline(fin, line) && i++ < row_num) {
+    ss << line << "\n";
+  }
+  return ss.str();
+}
+
+inline static std::string GetFromParserConfig(std::string config_str, std::string key) {
+  // parser config should follow json format.
+  std::string err;
+  Json config_json = Json::parse(config_str, &err);
+  if (!err.empty()) {
+    Log::Fatal("Invalid parser config: %s. Please check if follow json format.", err.c_str());
+  }
+  return config_json[key].string_value();
+}
+
+inline static std::string SaveToParserConfig(std::string config_str, std::string key, std::string value) {
+  std::string err;
+  Json config_json = Json::parse(config_str, &err);
+  if (!err.empty()) {
+    Log::Fatal("Invalid parser config: %s. Please check if follow json format.", err.c_str());
+  }
+  CHECK(config_json.is_object());
+  std::map<std::string, Json> config_map = config_json.object_items();
+  config_map.insert(std::pair<std::string, Json>(key, Json(value)));
+  return Json(config_map).dump();
 }
 
 template<typename T>
